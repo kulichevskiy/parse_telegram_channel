@@ -1,3 +1,4 @@
+import sys
 import os
 from telethon import TelegramClient
 from dotenv import load_dotenv
@@ -17,28 +18,48 @@ with TelegramClient('foobar', api_id, api_hash) as client:
         all_posts.append(post_text)
 
 
-print(all_posts)
+def create_batches(posts, max_size_mb=12):
+    # Calculate the max size in bytes
+    max_size_bytes = max_size_mb * 1024 * 1024
+
+    batches = []
+    batch = []
+    current_size = 0
+
+    for post in posts:
+        # Calculate the size of the current string in bytes
+        string_size = sys.getsizeof(post)
+
+        # Check if adding this string would exceed the max batch size
+        if current_size + string_size > max_size_bytes:
+            # Start a new batch
+            batches.append(batch)
+            batch = [post]
+            current_size = string_size
+        else:
+            # Add the string to the current batch
+            batch.append(post)
+            current_size += string_size
+
+    # Add the last batch to the list if not empty
+    if batch:
+        batches.append(batch)
+
+    return batches
 
 
-# Create a directory to store the text files
-# os.makedirs('telegram_posts', exist_ok=True)
+def save_batches_to_files(batches, output_prefix="posts"):
+    file_count = 1
+    for batch in batches:
+        file_name = f"{output_prefix}_{file_count}.txt"
+        with open(file_name, 'w', encoding='utf-8') as file:
+            for string in batch:
+                file.write(string + '\n')  # Each string on a new line
+        print(f"Batch {file_count} saved to {file_name}")
+        file_count += 1
 
 
-# # Process and save the retrieved posts
-# with open(f'telegram_posts/{channel_username}_posts_{file_counter}.txt', 'w', encoding='utf-8') as file:
-#    for post in all_posts:
-#        file_size += len(post.encode('utf-8'))
+batches = create_batches(all_posts)
 
-
-#        if file_size > max_file_size:
-#            file_counter += 1
-#            file_size = len(post.encode('utf-8'))
-#            file.close()
-#            file = open(f'telegram_posts/{channel_username}_posts_{file_counter}.txt', 'w', encoding='utf-8')
-
-
-#        file.write(post)
-
-
-
+save_batches_to_files(batches)
 
